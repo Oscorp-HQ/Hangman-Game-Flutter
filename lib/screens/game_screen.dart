@@ -229,8 +229,8 @@ class _GameScreenState extends State<GameScreen> {
         initWords();
       });
     }
-    return PopScope(
-      canPop: false,
+    return WillPopScope(
+      onWillPop: () async => false,
       child: Scaffold(
         body: SafeArea(
           child: Column(
@@ -352,7 +352,6 @@ class _GameScreenState extends State<GameScreen> {
                 child: Table(
                   defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
-                  //columnWidths: {1: FlexColumnWidth(10)},
                   children: [
                     TableRow(children: [
                       TableCell(
@@ -440,12 +439,11 @@ class _GameScreenState extends State<GameScreen> {
                         child: createButton(25),
                       ),
                       const TableCell(
-                        child: Text(''),
+                        child: SizedBox(
+                          width: 60,
+                        ),
                       ),
-                      const TableCell(
-                        child: Text(''),
-                      ),
-                    ]),
+                    ])
                   ],
                 ),
               ),
