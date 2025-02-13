@@ -1,25 +1,3 @@
-import 'dart:math';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_hangman/components/word_button.dart';
-import 'package:flutter_hangman/screens/home_screen.dart';
-import 'package:flutter_hangman/utilities/alphabet.dart';
-import 'package:flutter_hangman/utilities/constants.dart';
-import 'package:flutter_hangman/utilities/hangman_words.dart';
-import 'package:flutter_hangman/utilities/score_db.dart' as score_database;
-import 'package:flutter_hangman/utilities/user_scores.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:rflutter_alert/rflutter_alert.dart';
-
-class GameScreen extends StatefulWidget {
-  const GameScreen({super.key, required this.hangmanObject});
-
-  final HangmanWords hangmanObject;
-
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
-
 class _GameScreenState extends State<GameScreen> {
   final database = score_database.openDB();
   int lives = 5;
@@ -34,7 +12,9 @@ class _GameScreenState extends State<GameScreen> {
   int wordCount = 0;
   bool finishedGame = false;
   bool resetGame = false;
+  int incorrectGuesses = 0; // Track incorrect guesses
 
+  // New Game Logic
   void newGame() {
     setState(() {
       widget.hangmanObject.resetWords();
@@ -43,53 +23,12 @@ class _GameScreenState extends State<GameScreen> {
       wordCount = 0;
       finishedGame = false;
       resetGame = false;
+      incorrectGuesses = 0; // Reset incorrect guesses
       initWords();
     });
   }
 
-  Widget createButton(index) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 3.5, vertical: 6.0),
-      child: Center(
-        child: WordButton(
-          buttonTitle: englishAlphabet.alphabet[index].toUpperCase(),
-          onPress: buttonStatus[index] ? () => wordPress(index) : () {},
-        ),
-      ),
-    );
-  }
-
-  void returnHomePage() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => HomeScreen()),
-      ModalRoute.withName('homePage'),
-    );
-  }
-
-  void initWords() {
-    finishedGame = false;
-    resetGame = false;
-    hintStatus = true;
-    hangState = 0;
-    buttonStatus = List.generate(26, (index) {
-      return true;
-    });
-    wordList = [];
-    hintLetters = [];
-    word = widget.hangmanObject.getWord();
-    if (word.isNotEmpty) {
-      hiddenWord = widget.hangmanObject.getHiddenWord(word.length);
-    } else {
-      returnHomePage();
-    }
-
-    for (int i = 0; i < word.length; i++) {
-      wordList.add(word[i]);
-      hintLetters.add(i);
-    }
-  }
-
+  // Modify wordPress logic
   void wordPress(int index) {
     if (lives == 0) {
       returnHomePage();
@@ -116,10 +55,42 @@ class _GameScreenState extends State<GameScreen> {
           hintLetters.remove(i);
         }
       }
+
       if (!check) {
         hangState += 1;
+        incorrectGuesses += 1; // Increase incorrect guesses counter
+        // New condition: Game over if 3 incorrect guesses
+        if (incorrectGuesses >= 3) {
+          Alert(
+            context: context,
+            style: kFailedAlertStyle,
+            type: AlertType.error,
+            title: word,
+            buttons: [
+              DialogButton(
+                radius: BorderRadius.circular(10),
+                width: 127,
+                color: kDialogButtonColor,
+                height: 52,
+                child: Icon(
+                  MdiIcons.arrowRightThick,
+                  size: 30.0,
+                ),
+                onPressed: () {
+                  setState(() {
+                    Navigator.pop(context);
+                    initWords();
+                  });
+                },
+              ),
+            ],
+          ).show();
+          incorrectGuesses = 0; // Reset incorrect guesses
+          return;
+        }
       }
 
+      // Hangman game over condition (after 6 incorrect guesses)
       if (hangState == 6) {
         finishedGame = true;
         lives -= 1;
@@ -160,7 +131,6 @@ class _GameScreenState extends State<GameScreen> {
             style: kFailedAlertStyle,
             type: AlertType.error,
             title: word,
-//            desc: "You Lost!",
             buttons: [
               DialogButton(
                 radius: BorderRadius.circular(10),
@@ -191,7 +161,6 @@ class _GameScreenState extends State<GameScreen> {
           style: kSuccessAlertStyle,
           type: AlertType.success,
           title: word,
-//          desc: "You guessed it right!",
           buttons: [
             DialogButton(
               radius: BorderRadius.circular(10),
@@ -221,7 +190,7 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     initWords();
   }
-
+  
   @override
   Widget build(BuildContext context) {
     if (resetGame) {
@@ -229,8 +198,8 @@ class _GameScreenState extends State<GameScreen> {
         initWords();
       });
     }
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         body: SafeArea(
           child: Column(
@@ -301,7 +270,7 @@ class _GameScreenState extends State<GameScreen> {
                                 icon: Icon(MdiIcons.lightbulb),
                                 highlightColor: Colors.transparent,
                                 splashColor: Colors.transparent,
-                                onPressed: hintStatus
+                                onPressed: incorrectGuesses >= 3 && hintStatus
                                     ? () {
                                         int rand = Random()
                                             .nextInt(hintLetters.length);
@@ -439,11 +408,16 @@ class _GameScreenState extends State<GameScreen> {
                         child: createButton(25),
                       ),
                       const TableCell(
-                        child: SizedBox(
-                          width: 60,
+                        child: Padding(
+                          padding: EdgeInsets.all(0),
                         ),
                       ),
-                    ])
+                      const TableCell(
+                        child: Padding(
+                          padding: EdgeInsets.all(0),
+                        ),
+                      ),
+                    ]),
                   ],
                 ),
               ),
